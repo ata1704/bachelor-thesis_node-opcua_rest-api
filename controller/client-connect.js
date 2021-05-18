@@ -1,11 +1,21 @@
 import {OPCUAClient} from "node-opcua";
 
-export default async function connect(endPointUri) {
+const endpointUri = process.env.serverURL ? process.env.serverURL : console.log("endpointUri is not set!");
+
+export default async function connect() {
+
+    /*
+        Endpoint verification must be must be set to 'true' to prevent the man-in-the- middle attack.
+        To use the api with localhost the environment variable 'DEBUG' must be set.
+    */
+
+    let endpointMustExist = false;
+    if(!process.env.DEBUG) endpointMustExist = true;
+
     const client = OPCUAClient.create({
-        //endpoint verification gibt sonst einen Error aus, bei localhost:
         endpoint_must_exist: false,
 
-        //Parameter für einen erneuten Aufbau der Verbindung, bei einem Scheitern:
+        // Connection strategy defines the behaviour if the client cannot establish a connection to the server
         connectionStrategy: {
             initialDelay: 1000,
             maxDelay: 1100,
@@ -13,15 +23,13 @@ export default async function connect(endPointUri) {
         },
     });
 
-    //Eventlistener für schiefgelaufene Verbindungen:
+    // Eventlistener if the server is not reachable.
     client.on("backoff", (retry, delay) => {
         console.log(
-            `Verbindung zum zum Endpunkt konnte ${retry+1} mal nicht hergestellt werden. Nächster versuch in ${delay/1000} Sekunden.`);
+            `Connection could not be established for the ${retry+1} time. Next try in ${delay/1000} seconds...`);
     });
 
-    await client.connect(endPointUri);
+    await client.connect(endpointUri);
     return client;
-
-    //return await client.createSession();
 }
 

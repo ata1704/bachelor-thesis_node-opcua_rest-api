@@ -7,7 +7,7 @@
 import app from '../app.js';
 import debugLib from 'debug';
 import http from 'http';
-const debug = debugLib('node-opcua_rest-api');
+const debug = debugLib('node-opcua_rest-api:server');
 
 /**
  * Get port from environment and store in Express.
