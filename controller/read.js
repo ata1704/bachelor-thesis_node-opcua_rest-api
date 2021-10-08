@@ -1,12 +1,12 @@
-import {StatusCodes, AttributeIds} from "node-opcua";
-import Connect from "./client-connect.js";
+import {StatusCodes, AttributeIds, OPCUAClient} from "node-opcua";
+import {connect} from "./client-connect.js";
 
-export default async function read(nodeToBrowse, attributeId, indexRange = null, dataEncoding = null, maxAge = null) {
+export default async function read(nodeId, attributeId, indexRange = null, dataEncoding = null) {
     try {
-        const client = await Connect();
+        const client = await connect();
         const session = await client.createSession();
 
-        /*-- Attribute Ids --------------
+        /**------------ Attribute Ids --------------
 
             If the attribute id is not set or not valid the default attribute 'value' is returned.
             All attribute ids with the corresponding identifiers can be found in OPC 10000-4 Unified Architecture Part 6:
@@ -18,11 +18,11 @@ export default async function read(nodeToBrowse, attributeId, indexRange = null,
 
         const response = await session.read(
             {
-                nodeId: nodeToBrowse,
+                nodeId: nodeId,
                 attributeId: attributeId,
                 indexRange: indexRange,
                 dataEncoding: dataEncoding
-            }, maxAge
+            }
         );
 
         await session.close();

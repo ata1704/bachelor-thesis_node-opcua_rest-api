@@ -1,26 +1,81 @@
 #!/usr/bin/env node
+/**
+ *  To specify the URI for the OPC UA server set the environment variable "serverURL" with the URI as the value.
+ *  Environment variable "debug" must be set for debug messages on the console.
+ *      - Set the variable to "local" if the API and the OPC UA server running on the same machine (localhost).
+ *      - Set the variable to "home" to use the OPC UA server of Hochschule Merseburg.
+ */
 
 /**
  * Module dependencies.
  */
 
 import app from '../app.js';
-import debugLib from 'debug';
+import Debug from 'debug';
 import http from 'http';
-const debug = debugLib('node-opcua_rest-api:server');
+import {v4 as uuidv4} from 'uuid';
+import WebSocket from 'ws';
+
+
+import subscription from "../controller/subscription.js";
+import {socketCollection} from "./socketCollection.js";
+
+if(process.env.debug){
+    Debug.enable("node-opcua-api_*");
+}
+const debug = Debug("node-opcua-api_rest:");
+const debugWs = Debug('node-opcua-api_websocket');
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
+const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 /**
- * Create HTTP server.
+ * Setup of Websocket and http-Server.
  */
 
-var server = http.createServer(app);
+const server = http.createServer(app);
+// const wss = new WebSocket.Server({server: server, path: '/api/subscription'});
+
+
+/**
+ * Handle WebSocket connections.
+ */
+
+// wss.on('connection', function connection(ws) {
+//     const id = uuidv4();
+//     debugWs(`WebSocketMessage: New Client with Id ${id} is connected...`);
+//
+//     // To handle multiple client connections and use them in the module "subscription.js" the socket connections
+//     // are pushed to an module containing an array of sockets.
+//     socketCollection.push({
+//         id: id,
+//         socket: ws,
+//     });
+
+
+//     ws.on('message', (message) => {
+//         try {
+//             // The message is received as a string and that's why json parsing is necessary.
+//             subscription(id, JSON.parse(message));
+//         } catch (e) {
+//             ws.send("Not a JSON file");
+//         }
+//     });
+//
+//     ws.on('close', () => {
+//         debugWs(`WebSocketMessage: Client with Id ${id} is disconnected...`);
+//         // Delete the socket from the socketCollection.
+//         for (let i = 0; i < socketCollection.length; i++)
+//             if (socketCollection[i].id === id) {
+//                 socketCollection.splice(i, 1);
+//                 break;
+//             }
+//     })
+// });
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -35,19 +90,19 @@ server.on('listening', onListening);
  */
 
 function normalizePort(val) {
-  var port = parseInt(val, 10);
+    const port = parseInt(val, 10);
 
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
 
-  if (port >= 0) {
-    // port number
-    return port;
-  }
+    if (port >= 0) {
+        // port number
+        return port;
+    }
 
-  return false;
+    return false;
 }
 
 /**
@@ -55,27 +110,27 @@ function normalizePort(val) {
  */
 
 function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
 
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
+    const bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
 
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
 }
 
 /**
@@ -83,9 +138,9 @@ function onError(error) {
  */
 
 function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+    const addr = server.address();
+    const bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
 }
