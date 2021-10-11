@@ -1,7 +1,7 @@
-import {StatusCodes, UserTokenType, Variant} from "node-opcua";
-import {connect} from "./client-connect.js";
+const {StatusCodes, UserTokenType, Variant} = require("node-opcua");
+const connect = require("./client-connect");
 
-export default async function call(methodId, objectId, inputArguments, login, password) {
+module.exports = async function call(methodId, objectId, inputArguments, login, password) {
     try {
 
         const userIdentity = (login || password) === "" ? null : {
@@ -37,12 +37,17 @@ export default async function call(methodId, objectId, inputArguments, login, pa
             The data type must be assigned as an Number. You can find the IDs for the data types under:
             https://node-opcua.github.io/api_doc/2.32.0/enums/node_opcua_variant.datatype.html
         */
-        inputArguments.forEach((item, index) => {
-            if (Number.isInteger(item.dataType))
-                new Variant(item);
-            else
-                throw new Error(`The data type of the input variable ${index + 1} must be assigned as an Integer.`);
-        });
+        // inputArguments.forEach((item, index) => {
+        //     if (Number.isInteger(item.dataType))
+        //         new Variant(item);
+        //     else
+        //         throw new Error(`The data type of the input variable ${index + 1} must be assigned as an Integer.`);
+        // });
+        inputArguments.forEach(item =>
+        delete item.name)
+        console.log(methodId)
+        console.log(objectId)
+        console.log(inputArguments)
 
         const callMethodResult = await session.call(
             {
@@ -52,6 +57,7 @@ export default async function call(methodId, objectId, inputArguments, login, pa
             }
         );
 
+        console.log()
         await session.close();
         await client.disconnect();
 

@@ -1,18 +1,15 @@
-import {StatusCodes, AttributeIds, NodeClass, accessLevelFlagToString, VariantArrayType, DataTypeIds} from "node-opcua";
+const {StatusCodes,
+    AttributeIds,
+    NodeClass,
+    accessLevelFlagToString,
+    VariantArrayType,
+    DataTypeIds}
+= require("node-opcua");
+const {DataTypeIdsToString, AttributeIdToString}
+= require("./AttributeDetails")
 
-export default async function getAttributesForNode(nodeId, session) {
+module.exports = async function getAttributesForNode(nodeId, session) {
     try {
-        const attributeIdToString = invert(AttributeIds);
-        const DataTypeIdsToString = invert(DataTypeIds);
-
-        function invert(o)  {
-            const r = {};
-            for (const [k, v] of Object.entries(o)) {
-                r[v.toString()] = k;
-            }
-            return r;
-        }
-
         function dataValueToString(dataValue) {
             if (!dataValue.value || dataValue.value.value === null) {
                 return "<???> : " + dataValue.statusCode.toString();
@@ -87,7 +84,7 @@ export default async function getAttributesForNode(nodeId, session) {
             }
             const s = toString1(attributeToRead.attributeId, dataValue);
             result.push({
-                attribute: attributeIdToString[attributeToRead.attributeId],
+                attribute: AttributeIdToString[attributeToRead.attributeId],
                 value: s,
             }
             );

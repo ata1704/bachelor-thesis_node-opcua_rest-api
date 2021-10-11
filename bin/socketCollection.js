@@ -1,5 +1,4 @@
-/**
- * Array containing all websocket connections.
- */
+/** Array containing all websocket connections. */
 
-export const socketCollection = [];
+const socketCollection = [];
+module.exports = socketCollection;

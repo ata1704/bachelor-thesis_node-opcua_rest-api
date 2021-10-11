@@ -1,8 +1,8 @@
-import {TimestampsToReturn, ClientMonitoredItemGroup, UserTokenType, AttributeIds} from "node-opcua";
-import {connect} from "./client-connect.js";
-import {socketCollection} from "../bin/socketCollection.js";
+const {TimestampsToReturn, ClientMonitoredItemGroup, UserTokenType, AttributeIds} = require("node-opcua");
+const connect = require("./client-connect");
+const socketCollection = require("../bin/socketCollection");
 
-export default async function subscription(socketId, message) {
+module.exports = async function subscription(socketId, message) {
 
     /** ------- Example for itemToMonitor ---------
             {

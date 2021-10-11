@@ -1,8 +1,8 @@
-import {StatusCodes, UserTokenType, SecurityPolicy, AttributeIds} from "node-opcua";
-import {connect} from "./client-connect.js";
-import getPossibleAttributes from "./getPossibleAttributes.js";
+const {StatusCodes, UserTokenType, BrowseDirection, NodeClass} = require("node-opcua");
+const connect = require("./client-connect");
+const getPossibleAttributes = require("./getPossibleAttributes");
 
-export default async function getNode(nodeId, login, password) {
+module.exports = async function getNode(nodeId, login, password) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {
@@ -12,6 +12,7 @@ export default async function getNode(nodeId, login, password) {
         };
         const client = await connect();
         const session = await client.createSession(userIdentity);
+
         /** requestedMaxReferencesPerNode set to '0' means there's no maximum of returned references. */
         session.requestedMaxReferencesPerNode = 0;
 
@@ -34,10 +35,12 @@ export default async function getNode(nodeId, login, password) {
             },
             "_embedded": attributes.embeddedAttributes
         };
+
+        /** Check if references are available and if at least of them is a method: */
         if(browseResult.toJSON().references.length){
             result._links.References = {"href": `/nodes${nodeURI}references`}
             for(let i = 0; i<browseResult.toJSON().references.length; i++){
-                if(browseResult.toJSON().references[i].nodeClass === "Method") {
+                if(browseResult.toJSON().references[i].nodeClass === "Method" && browseResult.toJSON().references[i].isForward === true) {
                     result._links.Methods = {"href": `/nodes${nodeURI}methods`}
                     break;
                 }}}
@@ -48,17 +51,17 @@ export default async function getNode(nodeId, login, password) {
          *
          *  The relative path is constructed according to:
          *  @see https://datatracker.ietf.org/doc/html/rfc6570#section-3.2.8
-         *  The template "{?startTime,entTime}" can be equated to the path expansion "?startTime=...&endTime=..."
+         *  The template "{?start,end}" can be equated to the path expansion "?start=...&end=..."
          *
          *  The path is only set if the EventNotifier or the AccessLevel hold the value "HistoryRead":
          *  @see https://reference.opcfoundation.org/v104/Core/docs/Part4/5.10.3/
          */
         if(attributes.historyRead) result._links.HistoryRead = [{
-            "href": `/nodes/${encodeURIComponent(nodeId)}{?startTime,endTime}`,
+            "href": `/nodes/${encodeURIComponent(nodeId)}{?start,end}`,
             "templated": true,
             "TimeFormat": "YYYY-MM-DDTHH:mm:ss.sssZ"
         },{
-            "href": `/nodes/${encodeURIComponent(nodeId)}{?startTime}`,
+            "href": `/nodes/${encodeURIComponent(nodeId)}{?start}`,
             "templated": true,
             "TimeFormat": "YYYY-MM-DDTHH:mm:ss.sssZ",
             "description": "current time is used for end time"
@@ -70,7 +73,6 @@ export default async function getNode(nodeId, login, password) {
          */
         if(attributes.subscribableToEvents || attributes.availableAttributes.includes("Value"))
             result._links.subscription = {"href": `/nodes${nodeURI}subscription`}
-
         attributes.availableAttributes.forEach((attribute)=>{
             result._links[attribute] = {"href": `/nodes${nodeURI}${attribute}`}
         });

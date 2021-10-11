@@ -1,7 +1,7 @@
-import {StatusCodes, AttributeIds, OPCUAClient, UserTokenType} from "node-opcua";
-import {connect} from "./client-connect.js";
+const {StatusCodes, AttributeIds, OPCUAClient, UserTokenType} = require("node-opcua");
+const connect = require("./client-connect");
 
-export default async function write(nodeId, attributeId, value, login, password) {
+module.exports = async function write(nodeId, attributeId, value, login, password) {
     try {
 
         const userIdentity = (login || password) === "" ? null : {

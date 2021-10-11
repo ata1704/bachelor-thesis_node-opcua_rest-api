@@ -1,7 +1,7 @@
-import {StatusCodes, UserTokenType, SecurityPolicy, AttributeIds, QualifiedName, referenceTypeToString,} from "node-opcua";
-import {connect} from "./client-connect.js";
+const {StatusCodes, UserTokenType, AttributeIds, BrowseDirection} = require("node-opcua");
+const connect = require("./client-connect");
 
-export default async function getReference(nodeId, referenceId, login, password) {
+module.exports = async function getReference(nodeId, referenceId, login, password) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {

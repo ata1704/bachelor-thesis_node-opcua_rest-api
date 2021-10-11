@@ -1,15 +1,10 @@
-import {
+const {
     StatusCodes,
-    UserTokenType,
-    SecurityPolicy,
-    AttributeIds,
-    QualifiedName,
-    referenceTypeToString,
-    coerceNodeId,
-} from "node-opcua";
-import {connect} from "./client-connect.js";
+    UserTokenType
+} = require("node-opcua");
+const connect = require("./client-connect");
 
-export default async function getHistory(nodeId, start, end, login, password) {
+module.exports = async function getHistory(nodeId, start, end, login, password) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {
@@ -23,7 +18,6 @@ export default async function getHistory(nodeId, start, end, login, password) {
         const startTime = new Date(start);
         const endTime = new Date(end);
 
-
         const historyResult = await session.readHistoryValue(nodeId, startTime, endTime);
         if (historyResult.statusCode !== StatusCodes.Good) {
             await session.close();
@@ -33,6 +27,7 @@ export default async function getHistory(nodeId, start, end, login, password) {
 
         await session.close();
         await client.disconnect();
+
         historyResult.historyData.dataValues.forEach(item => delete item.statusCode);
 
         return {
@@ -47,6 +42,7 @@ export default async function getHistory(nodeId, start, end, login, password) {
             },
             "HistoryData": historyResult.historyData.dataValues
         }
+
 
     } catch
         (err) {

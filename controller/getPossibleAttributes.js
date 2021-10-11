@@ -1,16 +1,8 @@
-import {StatusCodes, AttributeIds, NodeClass, accessLevelFlagToString, VariantArrayType, DataTypeIds} from "node-opcua";
+const {StatusCodes, AttributeIds, NodeClass, accessLevelFlagToString} = require("node-opcua");
+const {AttributeIdToString, EventNotifier, LocalText} = require("./AttributeDetails")
 
-export default async function getPossibleAttributes(nodeId, session) {
+module.exports = async function getPossibleAttributes(nodeId, session) {
     try {
-        const attributeIdToString = invert(AttributeIds);
-
-        function invert(o)  {
-            const r = {};
-            for (const [k, v] of Object.entries(o)) {
-                r[v.toString()] = k;
-            }
-            return r;
-        }
 
         function toString1(attribute, dataValue) {
             if (!dataValue || !dataValue.value || !dataValue.value.hasOwnProperty("value")) {
@@ -24,12 +16,7 @@ export default async function getPossibleAttributes(nodeId, session) {
                  *  @see https://reference.opcfoundation.org/v104/Core/DataTypes/EventNotifierType/
                  */
                 case AttributeIds.EventNotifier:
-                    if (!dataValue.value.value) {
-                        return "None";
-                    }
-                    return  [(dataValue.value.value & 2**0 ? "SubscribeToEvents" : null),
-                        (dataValue.value.value & 2**2 ? "HistoryRead" : null),
-                        (dataValue.value.value & 2**3 ? "HistoryWrite" : null)].filter(Boolean).join(" | ")
+                    return EventNotifier(dataValue.value.value)
                 case AttributeIds.NodeId:
                 case AttributeIds.BrowseName:
                     if (!dataValue.value.value) {
@@ -38,11 +25,7 @@ export default async function getPossibleAttributes(nodeId, session) {
                     return dataValue.value.value.toString();
                 case AttributeIds.DisplayName:
                 case AttributeIds.Description:
-                    if (!dataValue.value.value) {
-                        return null;
-                    }
-                    return "Locale: "+(dataValue.value.value.locale ? dataValue.value.value.locale : "NONE")+" | Text: "+
-                        (dataValue.value.value.text ? dataValue.value.value.text : "NONE")
+                    return LocalText(dataValue.value.value)
                 case AttributeIds.AccessLevel:
                     if (!dataValue.value.value) {
                         return "null";
@@ -70,27 +53,27 @@ export default async function getPossibleAttributes(nodeId, session) {
 
         const dataValues = await session.read(attributesToRead);
 
-        for(let i = 0; i < attributesToRead.length; i++){
+        for(let i = 0; i < attributesToRead.length; i++) {
             const attributeToRead = attributesToRead[i];
             const dataValue = dataValues[i]
             /** If status code is not good the attribute is not supported for the specified node. */
-            if (dataValue.statusCode !== StatusCodes.Good){
+            if (dataValue.statusCode !== StatusCodes.Good) {
                 continue;
             }
             /** Adding the embedded attributes. */
-            if(i<=4 || i===11 || i===16) {
-                result.embeddedAttributes[attributeIdToString[attributeToRead.attributeId]] =
+            if (i <= 4) {
+                result.embeddedAttributes[AttributeIdToString[attributeToRead.attributeId]] =
                     toString1(attributeToRead.attributeId, dataValue);
-                /** Checking if historyRead is available in EventNotifier or AccessLevel (bit 2 must be set) */
-                if(i===11 || i===16) {
-                    result.historyRead = !!(dataValue.value.value & 2**2);
-                    /** Checking if Subscription is available in EventNotifier (bit 1 must be set) */
-                    if(i === 11){
-                        result.subscribableToEvents = !!(dataValue.value.value & 2**0);
-                    }
-                }
             }
-            result.availableAttributes.push(attributeIdToString[attributeToRead.attributeId]);
+            /** Checking if historyRead is available in EventNotifier or UserAccessLevel (bit 2 must be set) */
+            if (i === 17)
+                result.historyRead = !!(dataValue.value.value & 2 ** 2);
+            /** Checking if Subscription is available in EventNotifier (bit 1 must be set) */
+            if (i === 11)
+                result.subscribableToEvents = !!(dataValue.value.value & 2 ** 0);
+            if (i === 21)
+                result.executable = dataValue.value.value
+            result.availableAttributes.push(AttributeIdToString[attributeToRead.attributeId]);
         }
         return result;
 

@@ -1,16 +1,16 @@
-import getNode from '../controller/getNode.js';
-import write from "../controller/write.js";
-import extractNamespaceDataTypeRouter from "./api.namespaceDataType.js";
-import getAttribute from "../controller/getAttribute.js";
-import getReference from "../controller/getReference.js";
-import getReferences from "../controller/getReferences.js";
-import getHistory from "../controller/getHistory.js";
+const getNode =require('../controller/getNode');
+const write =  require("../controller/write");
+const getAttribute = require("../controller/getAttribute");
+const getReference = require("../controller/getReference");
+const getReferences = require("../controller/getReferences");
+const getHistory = require("../controller/getHistory");
+const getMethods = require("../controller/getMethods");
+const getMethod = require("../controller/getMethod");
+const callMethod = require("../controller/callMethod");
 
-
-import express from 'express';
-import logger from "morgan";
-import Debug from "debug";
-import {nodesets} from "node-opcua";
+const express = require('express')
+const logger = require("morgan");
+const Debug = require("debug");
 
 /** Change rootNode if you want to use a different entry point for your OPC UA Server. */
 const rootNode = "RootFolder"
@@ -27,11 +27,12 @@ const paths = {
     "attributes": "/nodes/:nodeId/:attributeId",
     "documentation": "/doc",
     "references": "/nodes/:nodeId/references",
-    "reference": "/nodes/:nodeId/references/:id"
+    "reference": "/nodes/:nodeId/references/:id",
+    "methods": "/nodes/:nodeId/methods",
+    "method": "/nodes/:nodeId/methods/:methodId"
 }
 
 const router = express.Router();
-router.use('/namespace-data-type', extractNamespaceDataTypeRouter);
 if (process.env.debug) {
     Debug.enable("node-opcua-api_*");
 }
@@ -47,9 +48,25 @@ function getCredentials(authorization) {
     return [decodedAuth.substring(0, splitIndex), decodedAuth.substring(splitIndex + 1)];
 }
 
-// BadNotReadable (0x803a0000)
 // BadNotWritable (0x803b0000)
-// BadUserAccessDenied (0x801f0000)
+function sharedHTTPErrors(err){
+    switch(err){
+        case "BadNodeIdUnknown (0x80340000)":
+            return {status: 404 , message : "The NodeId refers to a node that does not exist in the server address space."};
+        case "Cannot find ANONYMOUS user token policy in end point description":
+            return {status: 401 , message : "Access denied because of missing credentials for Basic Authentication"};
+        case "BadIdentityTokenRejected (0x80210000)":
+            return {status: 401 , message : "Access denied because of incorrect credentials for Basic Authentication" };
+        case "BadNotReadable (0x803a0000)":
+            return {status: 403 , message : "The access level does not allow reading or subscribing to the Node."};
+        case "BadUserAccessDenied (0x801f0000)":
+            return {status: 403 , message : "The access level does not allow reading or subscribing to the Node."};
+        default:
+            return {status: 500 , message : "Oops, something went wrong..."};
+    }
+
+}
+
 router.get(paths.root, (req, res) => {
 
     res.format({
@@ -62,8 +79,8 @@ router.get(paths.root, (req, res) => {
             res.json({
                 "_links": {
                     "self": {"href": paths.root},
-                    "RootNode": {"href": paths.entryPoint},
-                    "query": {"href": paths.query},
+                    "Entry Node": {"href": paths.entryPoint},
+                    "Query": {"href": paths.query},
                     // ToDO: Implement a documentation (e.g. Swagger).
                     //"documentation": {"href": paths.documentation}
                 }
@@ -76,7 +93,7 @@ router.get(paths.root, (req, res) => {
 });
 
 router.get(paths.nodes, async (req, res) => {
-    if(!req.accepts('application/json')) res.status(406).send('Not Acceptable');
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
     try {
         /**
          *  OPC UA allows all unicode characters for a NodeId of type String except whitespaces
@@ -92,13 +109,13 @@ router.get(paths.nodes, async (req, res) => {
          */
 
         /** HistoryRead service is always called on the Node.
-         *  If the parameter start time is set without parameter end time, the current time is used for end time,
-         *  but start time must be set.
+         *  If the parameter "start" is set without the parameter "end", the current time is used for end time,
+         *  but the start time must be set.
          */
         const userCredentials = getCredentials(req.headers.authorization);
 
         if(req.query.end && !req.query.start)
-            res.status(400).send("You cannot set the query parameter end time without a start time.");
+            res.status(400).send(`You cannot set the query parameter "end" without a "start".`);
         else if(req.query.start)
             res.json(await getHistory(
                 req.params.nodeId,
@@ -107,7 +124,7 @@ router.get(paths.nodes, async (req, res) => {
                 userCredentials[0],
                 userCredentials[1]));
         else res.json(await getNode(
-            req.params.nodeId === undefined ? rootNode : decodeURIComponent(req.params.nodeId),
+            req.params.nodeId === undefined ? rootNode : req.params.nodeId,
             userCredentials[0],
             userCredentials[1]));
 
@@ -115,32 +132,14 @@ router.get(paths.nodes, async (req, res) => {
         if (err.message.includes("String cannot be coerced to a nodeId"))
             res.status(404).send("The NodeId refers to a node that does not exist in the server address space.");
         else {
-            switch (err.message) {
-                case "BadNodeIdUnknown (0x80340000)":
-                    res.status(404).send("The NodeId refers to a node that does not exist in the server address space.");
-                    break;
-                case "Cannot find ANONYMOUS user token policy in end point description":
-                    res.status(401).send("Access denied because of missing credentials for Basic Authentication");
-                    break;
-                case "BadIdentityTokenRejected (0x80210000)":
-                    res.status(401).send("Access denied because of incorrect credentials for Basic Authentication");
-                    break;
-                case "BadNotReadable (0x803a0000)":
-                    res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                    break;
-                case "BadUserAccessDenied (0x801f0000)":
-                    res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                    break;
-                default:
-                    res.status(500).send("Oops, something went wrong...");
-                    break;
-            }
+            const error = sharedHTTPErrors(err.message)
+            res.status(error.status).send(error.message);
         }
     }
 });
 
 router.get(paths.reference, async (req, res) => {
-    if(!req.accepts('application/json')) res.status(406).send('Not Acceptable');
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
     try {
         const userCredentials = getCredentials(req.headers.authorization);
         const result = await getReference(
@@ -157,30 +156,15 @@ router.get(paths.reference, async (req, res) => {
             case "Cannot read property 'referenceTypeId' of undefined":
                 res.status(404).send("The ReferenceId refers to a reference that does not exist for this node.");
                 break;
-            case "BadNodeIdUnknown (0x80340000)":
-                res.status(404).send("The NodeId refers to a node that does not exist in the server address space.");
-                break;
-            case "Cannot find ANONYMOUS user token policy in end point description":
-                res.status(401).send("Access denied because of missing credentials for Basic Authentication");
-                break;
-            case "BadIdentityTokenRejected (0x80210000)":
-                res.status(401).send("Access denied because of incorrect credentials for Basic Authentication");
-                break;
-            case "BadNotReadable (0x803a0000)":
-                res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                break;
-            case "BadUserAccessDenied (0x801f0000)":
-                res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                break;
             default:
-                res.status(500).send("Oops, something went wrong...");
-                break;
+                const error = sharedHTTPErrors(err.message)
+                res.status(error.status).send(error.message);
         }
     }
 });
 
 router.get(paths.references, async (req, res) => {
-    if(!req.accepts('application/json')) res.status(406).send('Not Acceptable');
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
     try {
         const userCredentials = getCredentials(req.headers.authorization);
         const result = await getReferences(
@@ -192,31 +176,78 @@ router.get(paths.references, async (req, res) => {
         res.json(result);
 
     } catch (err) {
-        switch (err.message) {
-            case "BadNodeIdUnknown (0x80340000)":
-                res.status(404).send("The NodeId refers to a node that does not exist in the server address space.");
-                break;
-            case "Cannot find ANONYMOUS user token policy in end point description":
-                res.status(401).send("Access denied because of missing credentials for Basic Authentication");
-                break;
-            case "BadIdentityTokenRejected (0x80210000)":
-                res.status(401).send("Access denied because of incorrect credentials for Basic Authentication");
-                break;
-            case "BadNotReadable (0x803a0000)":
-                res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                break;
-            case "BadUserAccessDenied (0x801f0000)":
-                res.status(403).send("The access level does not allow reading or subscribing to the Node.");
+        const error = sharedHTTPErrors(err.message)
+        res.status(error.status).send(error.message);
+    }
+});
+
+router.get(paths.methods, async (req, res) => {
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
+    try {
+        const userCredentials = getCredentials(req.headers.authorization);
+        const result = await getMethods(
+            req.params.nodeId,
+            userCredentials[0],
+            userCredentials[1]
+        );
+
+        res.json(result);
+
+    } catch (err) {
+        const error = sharedHTTPErrors(err.message)
+        res.status(error.status).send(error.message);
+    }
+});
+
+router.get(paths.method, async (req, res) => {
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
+    try {
+        const userCredentials = getCredentials(req.headers.authorization);
+        const result = await getMethod(
+            req.params.nodeId,
+            req.params.methodId,
+            userCredentials[0],
+            userCredentials[1]
+        );
+        res.json(result);
+
+    } catch (err) {
+        switch(err.message){
+            case "This is not a method!":
+                res.status(404).send(err.message)
                 break;
             default:
-                res.status(500).send("Oops, something went wrong...");
-                break;
+                const error = sharedHTTPErrors(err.message)
+                res.status(error.status).send(error.message);
+        }
+    }
+});
+
+router.post(paths.method, async (req, res) => {
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
+    try {
+        const userCredentials = getCredentials(req.headers.authorization);
+        const result = await callMethod(
+            req.params.methodId,
+            req.params.nodeId,
+            req.body,
+            userCredentials[0],
+            userCredentials[1]
+        );
+        res.json(result);
+
+    } catch (err) {
+        if(err.message.includes("Input Error:"))
+            res.status(422).send(err.message)
+        else {
+            const error = sharedHTTPErrors(err.message)
+            res.status(error.status).send(error.message);
         }
     }
 });
 
 router.get(paths.attributes, async (req, res) => {
-    if(!req.accepts('application/json')) res.status(406).send('Not Acceptable');
+    if(!req.accepts('application/hal+json')) res.status(406).send('Not Acceptable');
     try {
         const userCredentials = getCredentials(req.headers.authorization);
         const result = await getAttribute(
@@ -236,21 +267,9 @@ router.get(paths.attributes, async (req, res) => {
             case "This is not an attribute.":
                 res.status(404).send("This is not an attribute.");
                 break;
-            case "Cannot find ANONYMOUS user token policy in end point description":
-                res.status(401).send("Access denied because of missing credentials for Basic Authentication");
-                break;
-            case "BadIdentityTokenRejected (0x80210000)":
-                res.status(401).send("Access denied because of incorrect credentials for Basic Authentication");
-                break;
-            case "BadNotReadable (0x803a0000)":
-                res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                break;
-            case "BadUserAccessDenied (0x801f0000)":
-                res.status(403).send("The access level does not allow reading or subscribing to the Node.");
-                break;
             default:
-                res.status(500).send("Oops, something went wrong...");
-                break;
+                const error = sharedHTTPErrors(err.message)
+                res.status(error.status).send(error.message);
         }
     }
 });
@@ -266,34 +285,33 @@ router.get(paths.attributes, async (req, res) => {
 //     })();
 // }))
 
-router.post('/write/*', ((req, res) => {
-    (async () => {
-        try {
-            // Get user information from HTTP-Header-Auth (Basic) for usage in OPC UA
-            const basicAuth = (req.headers.authorization || '').split(' ')[1] || ''
-            const decodedAuth = Buffer.from(basicAuth, 'base64').toString()
-            const splitIndex = decodedAuth.indexOf(':')
-            const login = decodedAuth.substring(0, splitIndex);
-            const password = decodedAuth.substring(splitIndex + 1);
+// router.post('/write/*', ((req, res) => {
+//     (async () => {
+//         try {
+//             // Get user information from HTTP-Header-Auth (Basic) for usage in OPC UA
+//             const basicAuth = (req.headers.authorization || '').split(' ')[1] || ''
+//             const decodedAuth = Buffer.from(basicAuth, 'base64').toString()
+//             const splitIndex = decodedAuth.indexOf(':')
+//             const login = decodedAuth.substring(0, splitIndex);
+//             const password = decodedAuth.substring(splitIndex + 1);
+//
+//             const callResponse = await write(
+//                 req.params[0], //nodeId
+//                 req.body.attributeId,
+//                 req.body.value,
+//                 login,
+//                 password
+//             );
+//             if (!callResponse.hasOwnProperty('statusCode'))
+//                 res.status(400).json(callResponse);
+//             else
+//                 res.json(callResponse);
+//         } catch (err) {
+//             res.status(500).send(err.message);
+//         }
+//     })();
+// }))
 
-            const callResponse = await write(
-                req.params[0], //nodeId
-                req.body.attributeId,
-                req.body.value,
-                login,
-                password
-            );
-            if (!callResponse.hasOwnProperty('statusCode'))
-                res.status(400).json(callResponse);
-            else
-                res.json(callResponse);
-        } catch (err) {
-            res.status(500).send(err.message);
-        }
-    })();
-}))
-
-export default router;
-
+module.exports = router;
 
 

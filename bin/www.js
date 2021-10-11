@@ -10,15 +10,15 @@
  * Module dependencies.
  */
 
-import app from '../app.js';
-import Debug from 'debug';
-import http from 'http';
-import {v4 as uuidv4} from 'uuid';
-import WebSocket from 'ws';
+const app = require('../app');
+const Debug = require('debug');
+const http = require('http');
+const { v4: uuidv4 } = require('uuid');
+const WebSocket = require('ws');
 
 
-import subscription from "../controller/subscription.js";
-import {socketCollection} from "./socketCollection.js";
+const subscription = require("../controller/subscription");
+const socketCollection = require("./socketCollection");
 
 if(process.env.debug){
     Debug.enable("node-opcua-api_*");
@@ -38,44 +38,44 @@ app.set('port', port);
  */
 
 const server = http.createServer(app);
-// const wss = new WebSocket.Server({server: server, path: '/api/subscription'});
+const wss = new WebSocket.Server({server: server, path: '/api/subscription'});
 
 
 /**
  * Handle WebSocket connections.
  */
 
-// wss.on('connection', function connection(ws) {
-//     const id = uuidv4();
-//     debugWs(`WebSocketMessage: New Client with Id ${id} is connected...`);
-//
-//     // To handle multiple client connections and use them in the module "subscription.js" the socket connections
-//     // are pushed to an module containing an array of sockets.
-//     socketCollection.push({
-//         id: id,
-//         socket: ws,
-//     });
+wss.on('connection', function connection(ws) {
+    const id = uuidv4();
+    debugWs(`WebSocketMessage: New Client with Id ${id} is connected...`);
+
+    // To handle multiple client connections and use them in the module "subscription.js" the socket connections
+    // are pushed to an module containing an array of sockets.
+    socketCollection.push({
+        id: id,
+        socket: ws,
+    });
 
 
-//     ws.on('message', (message) => {
-//         try {
-//             // The message is received as a string and that's why json parsing is necessary.
-//             subscription(id, JSON.parse(message));
-//         } catch (e) {
-//             ws.send("Not a JSON file");
-//         }
-//     });
-//
-//     ws.on('close', () => {
-//         debugWs(`WebSocketMessage: Client with Id ${id} is disconnected...`);
-//         // Delete the socket from the socketCollection.
-//         for (let i = 0; i < socketCollection.length; i++)
-//             if (socketCollection[i].id === id) {
-//                 socketCollection.splice(i, 1);
-//                 break;
-//             }
-//     })
-// });
+    ws.on('message', (message) => {
+        try {
+            // The message is received as a string and that's why json parsing is necessary.
+            subscription(id, JSON.parse(message));
+        } catch (e) {
+            ws.send("Not a JSON file");
+        }
+    });
+
+    ws.on('close', () => {
+        debugWs(`WebSocketMessage: Client with Id ${id} is disconnected...`);
+        // Delete the socket from the socketCollection.
+        for (let i = 0; i < socketCollection.length; i++)
+            if (socketCollection[i].id === id) {
+                socketCollection.splice(i, 1);
+                break;
+            }
+    })
+});
 
 /**
  * Listen on provided port, on all network interfaces.
