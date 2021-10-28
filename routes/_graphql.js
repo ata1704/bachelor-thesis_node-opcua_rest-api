@@ -8,7 +8,7 @@ import {
 } from "graphql";
 import {graphqlHTTP} from "express-graphql";
 import express from 'express';
-import browseQl from "../controller/browseQl.js";
+import browseQl from "../controller/_browseQl.js";
 import logger from "morgan";
 import Debug from "debug";
 

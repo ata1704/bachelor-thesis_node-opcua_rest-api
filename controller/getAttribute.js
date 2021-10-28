@@ -15,12 +15,12 @@ const {
     AccessRestrictions,
     AttributeWriteMask,
     LocalText
-} = require("./AttributeDetails")
+} = require("./AttributeDetails");
 
 
 module.exports = async function getAttribute(nodeId, attributeId, login, password) {
     try {
-        function toString1(attribute, dataValue) {
+        function attributes(attribute, dataValue) {
             if (!dataValue || !dataValue.value || !dataValue.value.hasOwnProperty("value")) {
                 return "<null>";
             }
@@ -38,7 +38,7 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
                 case AttributeIds.NodeClass:
                     return NodeClass[dataValue.value.value];
                 case AttributeIds.EventNotifier:
-                    return EventNotifier(dataValue.value.value)
+                    return EventNotifier(dataValue.value.value);
                 case AttributeIds.MinimumSamplingInterval:
                     return MinimumSamplingInterval(dataValue.value.value);
                 case AttributeIds.UserAccessLevel:
@@ -48,7 +48,7 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
                 case AttributeIds.AccessRestrictions:
                     return AccessRestrictions(dataValue.value.value);
                 default:
-                    return null
+                    return null;
             }
         }
 
@@ -57,21 +57,28 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
          *  @see: https://reference.opcfoundation.org/v104/Core/docs/Part3/5.2.8/
          */
         async function writableCheck(currentSession, attributeName, node) {
-            const res = await currentSession.read({
-                nodeId: node,
-                attributeId: AttributeIds["UserWriteMask"]
-            });
-            if(res.value.value === 0) return false;
-            return AttributeWriteMask(res.value.value).includes(attributeName);
+            if (attributeName === "Value") {
+                const res = await currentSession.read({
+                    nodeId: node,
+                    attributeId: AttributeIds["UserAccessLevel"]
+                });
+                return AccessLevel(res.value.value).includes("CurrentWrite");
+            } else {
+                const res = await currentSession.read({
+                    nodeId: node,
+                    attributeId: AttributeIds["UserWriteMask"]
+                });
+                return AttributeWriteMask(res.value.value).includes(attributeName);
+            }
         }
 
         /** Validation of the URI path element for the attribute.
          *  It's also possible to use the identifiers of the attributes in the URI.
          *  @see: https://reference.opcfoundation.org/v104/Core/docs/Part6/A.1/
          */
-        if(!isNaN(attributeId)) attributeId = AttributeIds[attributeId];
-        if(AttributeIds[attributeId] === undefined)
-            throw new Error("This is not an attribute.")
+        if (!isNaN(attributeId)) attributeId = AttributeIds[attributeId];
+        if (AttributeIds[attributeId] === undefined)
+            throw new Error("This is not an attribute.");
 
         const userIdentity = login === "" || password === "" ? null : {
             type: UserTokenType.UserName,
@@ -95,9 +102,9 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
         delete readResult.statusCode;
 
         /** Providing additional/prettier data: */
-        const additionalData = toString1(attributeId, readResult);
-        let result = readResult.toJSON()
-        if(additionalData)
+        const additionalData = attributes(attributeId, readResult);
+        let result = readResult.toJSON();
+        if (additionalData)
             result[attributeId] = additionalData;
 
         const writable = await writableCheck(session, attributeId, nodeId);
@@ -105,26 +112,28 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
         await session.close();
         await client.disconnect();
 
-        result = {"_links": {
-            "self" : {"href": `/nodes/${encodeURIComponent(nodeId)}/${attributeId}`}
-        }, ...result}
-        if(writable) result._links.update ={
-            "href": "/nodes/"+encodeURIComponent(nodeId)+"/"+attributeId,
+        result = {
+            "_links": {
+                "self": {"href": `/api/nodes/${encodeURIComponent(nodeId)}/${attributeId}`}
+            }, ...result
+        };
+        if (writable) result._links.update = {
+            "href": "/api/nodes/" + encodeURIComponent(nodeId) + "/" + attributeId,
             "method": "PUT"
-        }
+        };
 
         /** Add the Timestamps to a "time" object:*/
         result.time = {};
-        Object.keys(result).forEach( key => {
-            if(key.includes("Timestamp") || key.includes("Picoseconds")){
+        Object.keys(result).forEach(key => {
+            if (key.includes("Timestamp") || key.includes("Picoseconds")) {
                 result.time[key] = result[key];
                 delete result[key];
-            }});
+            }
+        });
 
         return result;
     } catch
         (err) {
         throw new Error(err.message);
     }
-}
-
+};

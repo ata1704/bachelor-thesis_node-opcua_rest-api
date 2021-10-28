@@ -1,25 +1,16 @@
-const { OPCUAClient } = require("node-opcua");
+const {OPCUAClient, MessageSecurityMode, SecurityPolicy} = require("node-opcua");
 
-const endpointUri = process.env.debug === "home" ? "opc.tcp://149.205.102.44:4840" : process.env.serverURL;
+const endpointUri = process.env.opcuaServerUrl === "home" ? "opc.tcp://149.205.102.44:4840" : process.env.opcuaServerUrl;
 
 module.exports = async function connect() {
     try {
-     /**
-      * To use the api with localhost or for testing the environment variable 'debug' must be set.
-      */
-
-        /*
-            basic256sha256
-            sign
-            149.205.102.44:4840
-            admin
-            f09e2c06
-         */
-
-        const endpointMustExist = process.env.debug !== "local";
+        /** To use the api with localhost the environment variable 'opcuaLocal' must be set. */
+        const endpointMustExist = !process.env.opcuaLocal;
 
         let client = OPCUAClient.create({
-            endpoint_must_exist: endpointMustExist,
+            endpointMustExist: endpointMustExist,
+            securityMode: MessageSecurityMode.Sign,
+            securityPolicy: SecurityPolicy.Basic256Sha256,
 
             /** Connection strategy defines the behaviour if the client cannot establish a connection to the server. */
             connectionStrategy: {
@@ -40,7 +31,6 @@ module.exports = async function connect() {
 
         return client;
     } catch (err) {
-        throw new Error(err.message)
+        throw new Error(err.message);
     }
-}
-
+};

@@ -1,8 +1,14 @@
-const {StatusCodes, UserTokenType, BrowseDirection, AttributeIds, DataTypeIds, coerceNodeId, Variant} = require("node-opcua");
+const {
+    StatusCodes,
+    UserTokenType,
+    BrowseDirection,
+    AttributeIds,
+    DataTypeIds,
+    coerceNodeId,
+    Variant
+} = require("node-opcua");
 const connect = require("./client-connect");
 const getPossibleAttributes = require("./getPossibleAttributes");
-const Validator = require('jsonschema').Validator;
-const v = new Validator();
 
 
 module.exports = async function callMethod(methodId, nodeId, inputs, login, password) {
@@ -39,18 +45,8 @@ module.exports = async function callMethod(methodId, nodeId, inputs, login, pass
          *  It's important that the input arguments are given in the same order as the arguments in the scheme.
          */
 
-        const DataTypeIdsToString = invert(DataTypeIds);
-        function invert(o)  {
-            const r = {};
-            for (const [k, v] of Object.entries(o)) {
-                r[v.toString()] = k;
-            }
-            return r;
-        }
 
-
-
-        const browseResult = await session.browse(methodId)
+        const browseResult = await session.browse(methodId);
         if (browseResult.statusCode !== StatusCodes.Good) {
             await session.close();
             await client.disconnect();
@@ -58,38 +54,38 @@ module.exports = async function callMethod(methodId, nodeId, inputs, login, pass
         }
 
         let SchemeNodeId;
-        browseResult.references.forEach(reference =>{
-            if(reference.browseName.name.includes("InputArguments"))
+        browseResult.references.forEach(reference => {
+            if (reference.browseName.name.includes("InputArguments"))
                 SchemeNodeId = reference.nodeId.toString();
         });
 
-        function arrayType(val){
-            if(val === 1 || val === -2 || val === -3) return "Array";
-            else if(val >= 0) return "Matrix";
-            else if(val === -1) return "Scalar";
+        function arrayType(val) {
+            if (val === 1 || val === -2 || val === -3) return "Array";
+            else if (val >= 0) return "Matrix";
+            else if (val === -1) return "Scalar";
             else return null;
         }
 
-        const inputScheme = await session.read( {"nodeId": SchemeNodeId, "attributeId": AttributeIds["Value"]});
+        const inputScheme = await session.read({"nodeId": SchemeNodeId, "attributeId": AttributeIds["Value"]});
 
         /** Comparing the input scheme with the input values: */
         const inputArguments = [];
-        if(!inputs) throw new Error(`Input error: The request body mustn't be empty!`);
-        if(inputs.length !== inputScheme.value.value.length) throw new Error(`An input argument is missing.`);
+        if (!inputs) throw new Error(`Input error: The request body mustn't be empty!`);
+        if (inputs.length !== inputScheme.value.value.length) throw new Error(`An input argument is missing.`);
         inputScheme.value.value.forEach((argument, index) => {
-            if(argument.name !== inputs[index].name)
-                throw new Error(`Input error: The name of the input argument ${index+1} is wrong or the arguments are not in the `+
-                `required order. View the link of the "Method" URI to get the scheme.`);
+            if (argument.name !== inputs[index].name)
+                throw new Error(`Input error: The name of the input argument ${index + 1} is wrong or the arguments are not in the ` +
+                    `required order. View the link of the "Method" URI to get the scheme.`);
             const variant = {};
-            if(inputs[index].arrayType)
-                if(arrayType(argument.valueRank) !== inputs[index].arrayType)
-                    throw new Error(`Input error: The arrayType you've provided for input argument ${index+1} is not matching `+
-                    `the scheme. View the link of the "Method" URI to get the scheme. Remember that this attribute `+
-                    `is optional!`);
-                else variant.arrayType = inputs[index].arrayType
-            if(isNaN(inputs[index].dataType)) inputs[index].dataType = DataTypeIds[inputs[index].dataType]
-            if(argument.dataType.value !== inputs[index].dataType)
-                throw new Error(`Input error: The dataType of the input argument ${index+1} is wrong. View the link of the "Method" URI to get the scheme.`)
+            if (inputs[index].arrayType)
+                if (arrayType(argument.valueRank) !== inputs[index].arrayType)
+                    throw new Error(`Input error: The arrayType you've provided for input argument ${index + 1} is not matching ` +
+                        `the scheme. View the link of the "Method" URI to get the scheme. Remember that this attribute ` +
+                        `is optional!`);
+                else variant.arrayType = inputs[index].arrayType;
+            if (isNaN(inputs[index].dataType)) inputs[index].dataType = DataTypeIds[inputs[index].dataType];
+            if (argument.dataType.value !== inputs[index].dataType)
+                throw new Error(`Input error: The dataType of the input argument ${index + 1} is wrong. View the link of the "Method" URI to get the scheme.`);
             else variant.dataType = inputs[index].dataType;
             variant.value = inputs[index].value;
             inputArguments.push(new Variant(variant));
@@ -106,16 +102,23 @@ module.exports = async function callMethod(methodId, nodeId, inputs, login, pass
         await session.close();
         await client.disconnect();
 
-        if(callMethodResult.statusCode !== StatusCodes.Good) {
+        if (callMethodResult.statusCode !== StatusCodes.Good) {
             if (callMethodResult.statusCode === StatusCodes.BadArgumentsMissing)
-                throw new Error("Input Error: One or more input arguments are missing.")
+                throw new Error("Input Error: One or more input arguments are missing.");
             else
                 throw new Error(callMethodResult.statusCode.toString());
         }
-        return callMethodResult.toJSON().outputArguments;
+
+        return {
+            "_links": {
+                "self": {"href": `/api/nodes/${encodeURIComponent(nodeId)}/methods/${methodId}`, "method": "POST"},
+                "method": {"href": `/api/nodes/${encodeURIComponent(nodeId)}/methods/${methodId}`}
+            },
+            "OutputArguments": callMethodResult.toJSON().outputArguments
+        };
 
     } catch
         (err) {
         throw new Error(err.message);
     }
-}
+};

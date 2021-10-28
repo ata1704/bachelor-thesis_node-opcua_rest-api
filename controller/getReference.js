@@ -1,4 +1,4 @@
-const {StatusCodes, UserTokenType, AttributeIds, BrowseDirection} = require("node-opcua");
+const {StatusCodes, UserTokenType, AttributeIds, BrowseDirection, NodeClass} = require("node-opcua");
 const connect = require("./client-connect");
 
 module.exports = async function getReference(nodeId, referenceId, login, password) {
@@ -14,7 +14,16 @@ module.exports = async function getReference(nodeId, referenceId, login, passwor
         /** requestedMaxReferencesPerNode set to '0' means there's no maximum of returned references. */
         session.requestedMaxReferencesPerNode = 0;
 
-        const browseResult = await session.browse(nodeId);
+        const browseDescription = {
+            browseDirection: BrowseDirection.Both,
+            includeSubtype: false,
+            nodeClassMask: 0,
+            referenceTypeId: 0,
+            resultMask: 0b111111,
+            nodeId: nodeId
+        };
+
+        const browseResult = await session.browse(browseDescription);
         if (browseResult.statusCode !== StatusCodes.Good) {
             await session.close();
             await client.disconnect();
@@ -22,40 +31,38 @@ module.exports = async function getReference(nodeId, referenceId, login, passwor
         }
 
         const referenceType = (await session.read({
-            nodeId: browseResult.references[referenceId-1].referenceTypeId.toString(),
-            attributeId: AttributeIds["DisplayName"]}
+                nodeId: browseResult.references[referenceId - 1].referenceTypeId.toString(),
+                attributeId: AttributeIds["DisplayName"]
+            }
         )).value.value.text;
 
         await session.close();
         await client.disconnect();
 
-        const nodeURI = `/${encodeURIComponent(nodeId)}/`
+        const nodeURI = `/${encodeURIComponent(nodeId)}/`;
 
         return {
             "_links": {
-                "self": {"href": `/nodes${nodeURI}references/${referenceId}`},
-                "Node": {"href": `/nodes/${encodeURIComponent(browseResult.references[referenceId-1].nodeId.toString())}`},
-                "ReferenceType": {"href": `/nodes/${encodeURIComponent(browseResult.references[referenceId-1].referenceTypeId.toString())}`},
+                "self": {"href": `/api/nodes${nodeURI}references/${referenceId}`},
+                "Node": {"href": `/api/nodes/${encodeURIComponent(browseResult.references[referenceId - 1].nodeId.toString())}`},
+                "ReferenceType": {"href": `/api/nodes/${encodeURIComponent(browseResult.references[referenceId - 1].referenceTypeId.toString())}`},
             },
             "_embedded": {
                 "Node": {
-                    "NodeId": browseResult.references[referenceId-1].nodeId.toString(),
-                    "DisplayName": browseResult.references[referenceId-1].displayName.text.toString(),
-                    "NodeClass": browseResult.references[referenceId-1].nodeClass.toString()
+                    "NodeId": browseResult.references[referenceId - 1].nodeId.toString(),
+                    "DisplayName": browseResult.references[referenceId - 1].displayName.text.toString(),
+                    "NodeClass": NodeClass[browseResult.references[referenceId - 1].nodeClass]
                 },
-                "Reference":{
-                    "NodeId": browseResult.references[referenceId-1].referenceTypeId.toString(),
+                "ReferenceType": {
+                    "NodeId": browseResult.references[referenceId - 1].referenceTypeId.toString(),
                     "DisplayName": referenceType
                 }
             },
-            "isForward": browseResult.references[referenceId-1].isForward
-        }
-
-
+            "isForward": browseResult.references[referenceId - 1].isForward
+        };
 
     } catch
         (err) {
-        console.log(err.message)
         throw new Error(err.message);
     }
-}
+};
