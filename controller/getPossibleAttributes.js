@@ -48,7 +48,6 @@ module.exports = async function getPossibleAttributes(nodeId, session) {
             attributeId: AttributeIds[attributeId],
         }));
 
-
         const result = {"availableAttributes": [], "embeddedAttributes": {}};
 
         const dataValues = await session.read(attributesToRead);
@@ -66,7 +65,7 @@ module.exports = async function getPossibleAttributes(nodeId, session) {
                     attributes(attributeToRead.attributeId, dataValue);
             }
             /** Checking if historyRead is available in EventNotifier or UserAccessLevel (bit 2 must be set) */
-            if (i === 17)
+            if (i === 17 || i === 11)
                 result.historyRead = !!(dataValue.value.value & 2 ** 2);
             /** Checking if Subscription is available in EventNotifier (bit 1 must be set) */
             if (i === 11)

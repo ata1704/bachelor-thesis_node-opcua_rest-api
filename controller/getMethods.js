@@ -2,14 +2,14 @@ const {StatusCodes, UserTokenType, AttributeIds, NodeClass} = require("node-opcu
 const connect = require("./client-connect");
 const {LocalText} = require("./AttributeDetails");
 
-module.exports = async function getMethods(nodeId, login, password) {
+module.exports = async function getMethods(nodeId, login, password, serverId) {
     try {
         const userIdentity = login === "" || password === "" ? null : {
             type: UserTokenType.UserName,
             userName: login,
             password: password
         };
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
         /** requestedMaxReferencesPerNode set to '0' means there's no maximum of returned references. */
         session.requestedMaxReferencesPerNode = 0;
@@ -24,7 +24,7 @@ module.exports = async function getMethods(nodeId, login, password) {
         const nodeURI = `/${encodeURIComponent(nodeId)}/`;
         const result = {
             "_links": {
-                "self": {"href": `/api/nodes${nodeURI}methods/`}
+                "self": {"href": `/api/${serverId}/nodes${nodeURI}methods/`}
             },
             "_embedded": {}
         };
@@ -36,7 +36,7 @@ module.exports = async function getMethods(nodeId, login, password) {
                     attributeId: AttributeIds["Description"]
                 });
                 result._links[reference.nodeId.toString()] =
-                    {"href": `/api/nodes${nodeURI}methods/${encodeURIComponent(reference.nodeId.toString())}`};
+                    {"href": `/api/${serverId}/nodes${nodeURI}methods/${encodeURIComponent(reference.nodeId.toString())}`};
                 result._embedded[reference.nodeId.toString()] = {
                     "NodeId": reference.nodeId.toString(),
                     "DisplayName": LocalText(reference.displayName),

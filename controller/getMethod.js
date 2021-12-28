@@ -11,7 +11,7 @@ const connect = require("./client-connect");
 const getPossibleAttributes = require("./getPossibleAttributes");
 const {DataTypeIdsToString, arrayType} = require("./AttributeDetails");
 
-module.exports = async function getMethod(nodeId, methodId, login, password) {
+module.exports = async function getMethod(nodeId, methodId, login, password, serverId) {
     try {
         const userIdentity = login === "" || password === "" ? null : {
             type: UserTokenType.UserName,
@@ -19,7 +19,7 @@ module.exports = async function getMethod(nodeId, methodId, login, password) {
             password: password
         };
 
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
 
         /** Verifying if the methodId references a method: */
@@ -45,7 +45,7 @@ module.exports = async function getMethod(nodeId, methodId, login, password) {
         const methodURI = `/${encodeURIComponent(methodId)}`;
         const result = {
             "_links": {
-                "self": {"href": "/api/nodes/" + nodeURI + "methods" + methodURI},
+                "self": {"href": "/api/"+serverId+"/nodes/" + nodeURI + "methods" + methodURI},
             }, "_embedded": {}
         };
 
@@ -58,13 +58,13 @@ module.exports = async function getMethod(nodeId, methodId, login, password) {
 
         /** POST method is shown if the method is executable. */
         if (attributes.executable)
-            result._links.call = {"href": "/api/nodes/" + nodeURI + "methods" + methodURI, "method": "POST"};
+            result._links.call = {"href": "/api/"+serverId+"/nodes/" + nodeURI + "methods" + methodURI, "method": "POST"};
 
         /** Getting the input and output attributes together with there values: */
         for (const reference of browseResult.references) {
             if (reference.referenceTypeId.toString() === "ns=0;i=46") {
                 result._links[reference.displayName.text] =
-                    {"href": "/api/nodes/" + encodeURIComponent(reference.nodeId.toString())};
+                    {"href": "/api/"+serverId+"/nodes/" + encodeURIComponent(reference.nodeId.toString())};
                 result._embedded[reference.displayName.text] = {
                     "Values": (await session.read({
                         nodeId: reference.nodeId,

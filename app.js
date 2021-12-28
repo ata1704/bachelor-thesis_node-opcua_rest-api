@@ -17,9 +17,29 @@
 /** Module dependencies. */
 const Debug = require('debug');
 const express = require('express');
+const cors = require('cors');
 const app = express();
 // Do not delete the following line of code and it should always be declared before the assignment of any router declarations!
 const expressWs = require('express-ws')(app);
+app.use(function (req, res, next) {
+    res.header("Content-Type", 'application/hal+json');
+    next();
+});
+
+/** "Global" Variable for the servers. **/
+let Server = [];
+const fs = require('fs');
+try {
+    fs.writeFileSync(".servers.json", "", {flag: 'wx', encoding: "utf-8"});
+    const data = fs.readFileSync(".servers.json", 'utf8');
+    if (data !== "") {
+        Server = JSON.parse(data);
+    }
+} catch (err) {
+    if(err.code !== 'EEXIST')
+        console.error(err);
+}
+module.exports.Server = Server;
 
 /** Router: */
 const router = require('./routes/router');
@@ -86,4 +106,4 @@ function onListening() {
     debug('Listening on ' + bind);
 }
 
-module.exports = app;
+module.exports.app = app;

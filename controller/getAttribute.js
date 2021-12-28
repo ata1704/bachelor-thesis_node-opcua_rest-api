@@ -18,7 +18,7 @@ const {
 } = require("./AttributeDetails");
 
 
-module.exports = async function getAttribute(nodeId, attributeId, login, password) {
+module.exports = async function getAttribute(nodeId, attributeId, login, password, serverId) {
     try {
         function attributes(attribute, dataValue) {
             if (!dataValue || !dataValue.value || !dataValue.value.hasOwnProperty("value")) {
@@ -86,7 +86,7 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
             password: password
         };
 
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
 
         const readResult = await session.read({
@@ -114,11 +114,11 @@ module.exports = async function getAttribute(nodeId, attributeId, login, passwor
 
         result = {
             "_links": {
-                "self": {"href": `/api/nodes/${encodeURIComponent(nodeId)}/${attributeId}`}
+                "self": {"href": `/api/${serverId}/nodes/${encodeURIComponent(nodeId)}/${attributeId}`}
             }, ...result
         };
         if (writable) result._links.update = {
-            "href": "/api/nodes/" + encodeURIComponent(nodeId) + "/" + attributeId,
+            "href": "/api/"+serverId+"/nodes/" + encodeURIComponent(nodeId) + "/" + attributeId,
             "method": "PUT"
         };
 

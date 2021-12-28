@@ -11,7 +11,7 @@ const connect = require("./client-connect");
 const getPossibleAttributes = require("./getPossibleAttributes");
 
 
-module.exports = async function callMethod(methodId, nodeId, inputs, login, password) {
+module.exports = async function callMethod(methodId, nodeId, inputs, login, password, serverId) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {
@@ -19,7 +19,7 @@ module.exports = async function callMethod(methodId, nodeId, inputs, login, pass
             userName: login,
             password: password
         };
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
 
         /** Input arguments must be provides as an array of value objects, while each object is holding the following properties:
@@ -111,8 +111,8 @@ module.exports = async function callMethod(methodId, nodeId, inputs, login, pass
 
         return {
             "_links": {
-                "self": {"href": `/api/nodes/${encodeURIComponent(nodeId)}/methods/${methodId}`, "method": "POST"},
-                "method": {"href": `/api/nodes/${encodeURIComponent(nodeId)}/methods/${methodId}`}
+                "self": {"href": `/api/${serverId}/nodes/${encodeURIComponent(nodeId)}/methods/${methodId}`, "method": "POST"},
+                "method": {"href": `/api/${serverId}/nodes/${encodeURIComponent(nodeId)}/methods/${methodId}`}
             },
             "OutputArguments": callMethodResult.toJSON().outputArguments
         };

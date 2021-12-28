@@ -1,7 +1,7 @@
 const {StatusCodes, UserTokenType, AttributeIds, BrowseDirection, NodeClass} = require("node-opcua");
 const connect = require("./client-connect");
 
-module.exports = async function getReference(nodeId, referenceId, login, password) {
+module.exports = async function getReference(nodeId, referenceId, login, password, serverId) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {
@@ -9,7 +9,7 @@ module.exports = async function getReference(nodeId, referenceId, login, passwor
             userName: login,
             password: password
         };
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
         /** requestedMaxReferencesPerNode set to '0' means there's no maximum of returned references. */
         session.requestedMaxReferencesPerNode = 0;
@@ -43,9 +43,9 @@ module.exports = async function getReference(nodeId, referenceId, login, passwor
 
         return {
             "_links": {
-                "self": {"href": `/api/nodes${nodeURI}references/${referenceId}`},
-                "Node": {"href": `/api/nodes/${encodeURIComponent(browseResult.references[referenceId - 1].nodeId.toString())}`},
-                "ReferenceType": {"href": `/api/nodes/${encodeURIComponent(browseResult.references[referenceId - 1].referenceTypeId.toString())}`},
+                "self": {"href": `/api/${serverId}/nodes${nodeURI}references/${referenceId}`},
+                "Node": {"href": `/api/${serverId}/nodes/${encodeURIComponent(browseResult.references[referenceId - 1].nodeId.toString())}`},
+                "ReferenceType": {"href": `/api/${serverId}/nodes/${encodeURIComponent(browseResult.references[referenceId - 1].referenceTypeId.toString())}`},
             },
             "_embedded": {
                 "Node": {

@@ -2,7 +2,7 @@ const {StatusCodes, UserTokenType, BrowseDirection, NodeClass} = require("node-o
 const connect = require("./client-connect");
 const getPossibleAttributes = require("./getPossibleAttributes");
 
-module.exports = async function getNode(nodeId, login, password) {
+module.exports = async function getNode(nodeId, login, password, serverId) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {
@@ -10,7 +10,7 @@ module.exports = async function getNode(nodeId, login, password) {
             userName: login,
             password: password
         };
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
 
         /** requestedMaxReferencesPerNode set to '0' means there's no maximum of returned references. */
@@ -31,17 +31,17 @@ module.exports = async function getNode(nodeId, login, password) {
         const nodeURI = `/${encodeURIComponent(nodeId)}/`;
         const result = {
             "_links": {
-                "self": {"href": "/api/nodes/" + encodeURIComponent(nodeId)}
+                "self": {"href": "/api/"+serverId+"/nodes/" + encodeURIComponent(nodeId)}
             },
             "_embedded": attributes.embeddedAttributes
         };
 
         /** Check if references are available and if at least of them is a method: */
         if (browseResult.toJSON().references.length) {
-            result._links.References = {"href": `/api/nodes${nodeURI}references`};
+            result._links.References = {"href": `/api/${serverId}/nodes${nodeURI}references`};
             for (let i = 0; i < browseResult.toJSON().references.length; i++) {
                 if (browseResult.toJSON().references[i].nodeClass === "Method" && browseResult.toJSON().references[i].isForward === true) {
-                    result._links.Methods = {"href": `/api/nodes${nodeURI}methods`};
+                    result._links.Methods = {"href": `/api/${serverId}/nodes${nodeURI}methods`};
                     break;
                 }
             }
@@ -59,11 +59,11 @@ module.exports = async function getNode(nodeId, login, password) {
          *  @see https://reference.opcfoundation.org/v104/Core/docs/Part4/5.10.3/
          */
         if (attributes.historyRead) result._links.HistoryRead = [{
-            "href": `/api/nodes/${encodeURIComponent(nodeId)}{?start,end}`,
+            "href": `/api/${serverId}/nodes/${encodeURIComponent(nodeId)}{?start,end}`,
             "templated": true,
             "TimeFormat": "YYYY-MM-DDTHH:mm:ss.sssZ"
         }, {
-            "href": `/api/nodes/${encodeURIComponent(nodeId)}{?start}`,
+            "href": `/api/${serverId}/nodes/${encodeURIComponent(nodeId)}{?start}`,
             "templated": true,
             "TimeFormat": "YYYY-MM-DDTHH:mm:ss.sssZ",
             "description": "current time is used for end time"
@@ -74,16 +74,15 @@ module.exports = async function getNode(nodeId, login, password) {
          *  @see: https://documentation.unified-automation.com/uasdkhp/1.4.1/html/_l2_ua_subscription.html
          */
         if (attributes.subscribableToEvents || attributes.availableAttributes.includes("Value"))
-            result._links.subscription = {"href": `/api/nodes${nodeURI}subscription`, "method": "WebSocket"};
+            result._links.subscription = {"href": `/api/${serverId}/nodes${nodeURI}subscription`, "method": "WebSocket"};
         attributes.availableAttributes.forEach((attribute) => {
-            result._links[attribute] = {"href": `/api/nodes${nodeURI}${attribute}`};
+            result._links[attribute] = {"href": `/api/${serverId}/nodes${nodeURI}${attribute}`};
         });
 
         return result;
 
     } catch
         (err) {
-        console.log(err.message);
         throw new Error(err.message);
     }
 };

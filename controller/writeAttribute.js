@@ -24,7 +24,7 @@ const connect = require("./client-connect");
  *  }
  */
 
-module.exports = async function writeAttribute(nodeId, attributeId, payload, login, password) {
+module.exports = async function writeAttribute(nodeId, attributeId, payload, login, password, serverId) {
     try {
         const userIdentity = (login || password) === "" ? null : {
             type: UserTokenType.UserName,
@@ -32,18 +32,29 @@ module.exports = async function writeAttribute(nodeId, attributeId, payload, log
             password: password
         };
 
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
+
+        // const writeValueOptions = {
+        //     nodeId: nodeId,
+        //     attributeId: (isNaN(attributeId)) ? AttributeIds[attributeId] : attributeId,
+        //     value: [{
+        //         value: {
+        //             dataType: isNaN(payload.value[0].dataType) ? DataTypeIds[payload.value[0].dataType] : payload.value[0].dataType,
+        //             value: payload.value[0].value
+        //         }
+        //     }]
+        // };
 
         const writeValueOptions = {
             nodeId: nodeId,
             attributeId: (isNaN(attributeId)) ? AttributeIds[attributeId] : attributeId,
-            value: [{
+            value: {
                 value: {
-                    dataType: isNaN(payload.value[0].dataType) ? DataTypeIds[payload.value[0].dataType] : payload.value[0].dataType,
-                    value: payload.value[0].value
+                    dataType: isNaN(payload.value[0].value.dataType) ? DataTypeIds[payload.value[0].value.dataType] : payload.value[0].value.dataType,
+                    value: payload.value[0].value.value
                 }
-            }]
+            }
         };
 
         // ToDo: conditionally add: https://node-opcua.github.io/api_doc/2.32.0/classes/node_opcua.numericrange.html
@@ -51,7 +62,7 @@ module.exports = async function writeAttribute(nodeId, attributeId, payload, log
         // ToDo: conditionally add: https://node-opcua.github.io/api_doc/2.32.0/interfaces/node_opcua.datavalueoptions.html
         // writeValueOptions.value.serverPicoseconds =
         // writeValueOptions.value.sourcePicoseconds =
-        //writeValueOptions.value.serverTimestamp =
+        // writeValueOptions.value.serverTimestamp =
         // writeValueOptions.value.sourceTimestamp =
         // writeValueOptions.value.statusCode =
         // ToDo: conditionally add: https://node-opcua.github.io/api_doc/2.32.0/interfaces/node_opcua.variantoptions.html

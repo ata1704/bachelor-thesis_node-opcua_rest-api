@@ -7,7 +7,7 @@ const {
 } = require("node-opcua");
 const connect = require("./client-connect");
 
-module.exports = async function subscription(ws, nodeId, login, password) {
+module.exports = async function subscription(ws, nodeId, login, password, serverId) {
     const userIdentity = login === "" || password === "" ? null : {
         type: UserTokenType.UserName,
         userName: login,
@@ -15,7 +15,7 @@ module.exports = async function subscription(ws, nodeId, login, password) {
     };
 
     try {
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
 
         /** Check if there's the attribute Value or EventNotifier and in the latter if it's subscribable. */
@@ -61,6 +61,7 @@ module.exports = async function subscription(ws, nodeId, login, password) {
         /** Fields to return for EventNotifier:
          *  @see: https://reference.opcfoundation.org/v104/Core/docs/Part5/6.4.2/
          */
+
         const eventFilter = constructEventFilter([
             //"AuditEventType",
             //"SystemEventType",

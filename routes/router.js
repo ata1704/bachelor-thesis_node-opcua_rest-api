@@ -8,6 +8,9 @@ const getMethods = require("../controller/getMethods");
 const getMethod = require("../controller/getMethod");
 const callMethod = require("../controller/callMethod");
 const subscription = require("../controller/subscription");
+const getServers = require("../controller/getServers");
+
+let {Server} = require("../app");
 
 const express = require('express');
 const logger = require("morgan");
@@ -22,16 +25,17 @@ const rootNode = "RootFolder";
  */
 const paths = {
     "root": "/",
+    "server": "/:serverId",
     "query": "/query",
     "entryPoint": "/nodes/" + encodeURIComponent(rootNode),
-    "nodes": "/nodes/:nodeId?",
-    "attributes": "/nodes/:nodeId/:attributeId",
+    "nodes": "/:serverId/nodes/:nodeId?",
+    "attributes": "/:serverId/nodes/:nodeId/:attributeId",
     "documentation": "/doc",
-    "references": "/nodes/:nodeId/references",
-    "reference": "/nodes/:nodeId/references/:id",
-    "methods": "/nodes/:nodeId/methods",
-    "method": "/nodes/:nodeId/methods/:methodId",
-    "subscription": "/nodes/:nodeId/subscription"
+    "references": "/:serverId/nodes/:nodeId/references",
+    "reference": "/:serverId/nodes/:nodeId/references/:id",
+    "methods": "/:serverId/nodes/:nodeId/methods",
+    "method": "/:serverId/nodes/:nodeId/methods/:methodId",
+    "subscription": "/:serverId/nodes/:nodeId/subscription"
 };
 
 const router = express.Router();
@@ -95,7 +99,13 @@ function sharedHTTPErrors(err) {
     }
 }
 
-router.get(paths.root, (req, res) => {
+router.get(paths.root, async (req, res) => {
+
+    const serverList = [];
+    await getServers();
+    Server.forEach((server, index) => {
+        serverList.push({"href": "/api" + paths.root + (index + 1), "title": server.title});
+    });
 
     res.format({
         // ToDo: Implement an HTML-Landing-Page
@@ -107,11 +117,32 @@ router.get(paths.root, (req, res) => {
             res.json({
                 "_links": {
                     "self": {"href": "/api" + paths.root},
-                    "Entry Node": {"href": "/api" + paths.entryPoint},
+                    "serverList": serverList,
+                    "documentation": {"href": "/api"+paths.documentation}
+                }
+            });
+        },
+        default: function () {
+            res.status(406).send('Not Acceptable');
+        }
+    });
+});
+
+router.get(paths.server, async (req, res) => {
+
+    res.format({
+        // ToDo: Implement an HTML-Landing-Page
+        // 'text/html': function () {
+        //     res.send('<p>hey</p>')
+        // },
+
+        'application/json': function () {
+            res.json({
+                "_links": {
+                    "self": {"href": "/api/" + req.params.serverId},
+                    "Entry Node": {"href": "/api/"+ req.params.serverId + paths.entryPoint},
                     // ToDo: Implement Queries.
-                    "Query": {"href": "/api" + paths.query},
-                    //ToDo: Implement a documentation (e.g. Swagger).
-                    "documentation": {"href": paths.documentation}
+                    "Query": {"href": "/api/" + req.params.serverId + paths.query},
                 }
             });
         },
@@ -155,11 +186,13 @@ router.get(paths.nodes, async (req, res) => {
                 req.query.start,
                 req.query.end,
                 userCredentials[0],
-                userCredentials[1]));
+                userCredentials[1],
+                req.params.serverId));
         else res.json(await getNode(
                 req.params.nodeId === undefined ? rootNode : req.params.nodeId,
                 userCredentials[0],
-                userCredentials[1]));
+                userCredentials[1],
+                req.params.serverId));
 
     } catch (err) {
         if (err.message.includes("String cannot be coerced to a nodeId"))
@@ -183,7 +216,8 @@ router.get(paths.subscription, ((req, res) => {
 router.ws(paths.subscription, (ws, req) => {
     try {
         const userCredentials = getCredentials(req.headers.authorization);
-        const sub = subscription(ws, req.params.nodeId, userCredentials[0], userCredentials[1]);
+        const sub = subscription(ws, req.params.nodeId, userCredentials[0], userCredentials[1],
+            req.params.serverId);
         ws.on('close', function () {
             debugWs("WebSocket closed");
         });
@@ -200,7 +234,8 @@ router.get(paths.reference, async (req, res) => {
             req.params.nodeId,
             req.params.id,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
 
         res.json(result);
@@ -218,7 +253,8 @@ router.get(paths.references, async (req, res) => {
         const result = await getReferences(
             req.params.nodeId,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
         res.json(result);
 
@@ -235,7 +271,8 @@ router.get(paths.methods, async (req, res) => {
         const result = await getMethods(
             req.params.nodeId,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
 
         res.json(result);
@@ -254,7 +291,8 @@ router.get(paths.method, async (req, res) => {
             req.params.nodeId,
             req.params.methodId,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
         res.json(result);
 
@@ -273,7 +311,8 @@ router.post(paths.method, async (req, res) => {
             req.params.nodeId,
             req.body,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
         res.json(result);
 
@@ -295,7 +334,8 @@ router.get(paths.attributes, async (req, res) => {
             req.params.nodeId,
             req.params.attributeId,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
 
         res.json(result);
@@ -332,7 +372,8 @@ router.put(paths.attributes, async (req, res) => {
             req.params.attributeId,
             req.body,
             userCredentials[0],
-            userCredentials[1]
+            userCredentials[1],
+            req.params.serverId
         );
         // The body is send for clients like Postman, that need a message body for 204.
         res.status(204).send("");

@@ -5,7 +5,7 @@ const {
 const connect = require("./client-connect");
 const {EventNotifier, AccessLevel} = require("./AttributeDetails");
 
-module.exports = async function getHistory(nodeId, start, end, login, password) {
+module.exports = async function getHistory(nodeId, start, end, login, password, serverId) {
     try {
 
         const userIdentity = login === "" || password === "" ? null : {
@@ -13,7 +13,7 @@ module.exports = async function getHistory(nodeId, start, end, login, password) 
             userName: login,
             password: password
         };
-        const client = await connect();
+        const client = await connect(serverId);
         const session = await client.createSession(userIdentity);
 
         const startTime = new Date(start);
@@ -53,19 +53,18 @@ module.exports = async function getHistory(nodeId, start, end, login, password) 
 
         return {
             "_links": {
-                "self": {"href": "/api/nodes/" + encodeURIComponent(nodeId) + "?start=" + start + (end ? "&end=" + end : "")},
+                "self": {"href": "/api/"+serverId+"/nodes/" + encodeURIComponent(nodeId) + "?start=" + start + (end ? "&end=" + end : "")},
                 "template": {
-                    "href": `/api/nodes/${encodeURIComponent(nodeId)}{?startTime,endTime}`,
+                    "href": `/api/${serverId}/nodes/${encodeURIComponent(nodeId)}{?startTime,endTime}`,
                     "templated": true,
                     "TimeFormat": "YYYY-MM-DDTHH:mm:ss.sssZ"
                 },
-                "Node:": {"href": "/api/nodes/" + encodeURIComponent(nodeId)},
+                "Node:": {"href": "/api/"+serverId+"/nodes/" + encodeURIComponent(nodeId)},
             },
             "HistoryData": historyResult.historyData.dataValues
         };
     } catch
         (err) {
-        console.log(err.message);
         throw new Error(err.message);
     }
 };

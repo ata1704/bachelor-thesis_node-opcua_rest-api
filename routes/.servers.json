@@ -1,0 +1,18 @@
+[
+  {
+    "url": "opc.tcp://macbook-pro.fritz.box:1435",
+    "title": "NodeOPCUA-Server1"
+  },
+  {
+    "url": "opc.tcp://macbook-pro.fritz.box:1436",
+    "title": "NodeOPCUA-Server2"
+  },
+  {
+    "url": "opc.tcp://macbook-pro.fritz.box:1437",
+    "title": "NodeOPCUA-Server3"
+  },
+  {
+    "url": "opc.tcp://MacBook-Pro.fritz.box:53530/OPCUA/SimulationServer",
+    "title": "SimulationServer@MacBook-Pro"
+  }
+]
