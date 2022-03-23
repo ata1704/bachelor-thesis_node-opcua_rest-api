@@ -1,7 +1,6 @@
 /**
  *  OPC UA Server address:
- *  To specify the URI for the OPC UA server set the environment variable "opcuaServerUrl" with the URI as the value.
- *  If serverURL is set to "home" the URI "opc.tcp://149.205.102.44:4840" is used.
+ *  To specify the URI for the OPC UA discovery server set the environment variable "opcuaDiscoveryServerUrl" with the URI as the value.
  *
  *  Debugging:
  *  Environment variable "debug" must be set for debug messages on the console.
@@ -105,5 +104,6 @@ function onListening() {
         : 'port ' + server.address().port;
     debug('Listening on ' + bind);
 }
+
 
 module.exports.app = app;

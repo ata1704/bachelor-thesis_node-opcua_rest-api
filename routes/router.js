@@ -48,7 +48,7 @@ router.use(logger('dev', {stream: {write: msg => debug(msg.trimEnd())}}));
 
 
 function getCredentials(authorization) {
-    /** Get user information from HTTP-Header-Auth (Basic) for usage in OPC UA  */
+    /** Get user information from HTTP-Header-Auth (Basic) for use in OPC UA  */
     const basicAuth = (authorization || '').split(' ')[1] || '';
     const decodedAuth = Buffer.from(basicAuth, 'base64').toString();
     const splitIndex = decodedAuth.indexOf(':');

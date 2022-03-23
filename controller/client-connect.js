@@ -1,8 +1,6 @@
 const {OPCUAClient, MessageSecurityMode, SecurityPolicy} = require("node-opcua");
 const {Server} = require("../app")
 
-//const endpointUri = process.env.opcuaServerUrl === "home" ? "opc.tcp://149.205.102.44:4840" : process.env.opcuaServerUrl;
-
 module.exports = async function connect(serverId) {
     try {
         /** To use the api with localhost the environment variable 'opcuaLocal' must be set. */

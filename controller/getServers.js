@@ -12,7 +12,6 @@ module.exports = async function getServers() {
         if (data !== "") {
             serverList.push(...JSON.parse(data));
         }
-        const arrayLength = serverList.length;
 
         const currentServers = await discoveryServer();
 
@@ -22,7 +21,7 @@ module.exports = async function getServers() {
             }
         });
 
-        if (serverList.length > arrayLength) {
+        if (serverList.length > Server.length) {
             Server.splice(0,Server.length)
             Server.push(...serverList);
             await fs.writeFile(path.join(__dirname, "..", ".servers.json"), JSON.stringify(serverList));
