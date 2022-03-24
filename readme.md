@@ -25,3 +25,25 @@ Right now only UA TCP endpoints with [Security Mode *Sign* and Security Policy *
 The username and password must be send via [basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).
 
 
+## Supported Features
+
+
+| **Feature** | **Corresponding OPC UA services** | **Status** |
+| --- | --- | --- |
+| Browse the address space | Browse, BrowseNext | :green_circle: |
+| Read attributes | Read | :green_circle: |
+| Write attributes | Write | :yellow_circle: |
+| History read | HistoryRead | :green_circle: |
+| Call a method | Call | :green_circle: |
+| Subscribe | Subscription Service Set | :green_circle: |
+| Change subscription settings | MonitoredItems Service Set | :red_circle: |
+| Start a Query | QueryFirst, QueryNext | :red_circle: |
+
+## ToDo
+* The api provides a translated form of the most attributes, but some are still missing (InverseName, ArrayDimensions, RolePermissions, UserRolePermissions) and can only be viewed in their raw form.
+* You can write attributes but OPC UA supports highly complex data structures, that may not be processed right now.
+* Give the user the ability to change the subscription settings.
+* Queries
+* Pagination for the References
+* Support for different authentication methods.
+* A better api documentation
