@@ -40,10 +40,10 @@ The username and password must be send via [basic access authentication](https:/
 | Start a Query | QueryFirst, QueryNext | :red_circle: |
 
 ## ToDo
-* The api provides a translated form of the most attributes, but some are still missing (InverseName, ArrayDimensions, RolePermissions, UserRolePermissions) and can only be viewed in their raw form.
-* You can write attributes but OPC UA supports highly complex data structures, that may not be processed right now.
+* The api provides a translated form for most of the attributes, but some are still missing and can only be viewed in their raw form. (InverseName, ArrayDimensions, RolePermissions, UserRolePermissions)
+* You can write attributes but OPC UA supports highly complex data structures, that may not be processed by this api right now.
 * Give the user the ability to change the subscription settings.
 * Queries
-* Pagination for the References
+* Pagination for the reference resource.
 * Support for different authentication methods.
-* A better api documentation
+* A better api documentation and description.
