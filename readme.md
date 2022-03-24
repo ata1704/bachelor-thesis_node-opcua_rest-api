@@ -29,7 +29,7 @@ The username and password must be send via [basic access authentication](https:/
 
 
 | **Feature** | **Corresponding OPC UA services** | **Status** |
-| --- | --- | --- |
+| --- | --- |:---:|
 | Browse the address space | Browse, BrowseNext | :green_circle: |
 | Read attributes | Read | :green_circle: |
 | Write attributes | Write | :yellow_circle: |
