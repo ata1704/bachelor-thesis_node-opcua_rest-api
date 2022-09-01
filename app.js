@@ -12,6 +12,7 @@
  *  If the environment variable PORT is not set to a different port, 3000 will be used as the port of the API.
  */
 
+ require('dotenv').config();
 
 /** Module dependencies. */
 const Debug = require('debug');
