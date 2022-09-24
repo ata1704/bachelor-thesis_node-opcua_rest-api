@@ -5,10 +5,10 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "discoveryServer": "node dsserver.js",
-    "server1": "node server1.js",
-    "server2": "node server2.js",
-    "server3": "node server3.js",
+    "discoveryServer": "node mock/dsserver.js",
+    "server1": "node mock/server1.js",
+    "server2": "node mock/server2.js",
+    "server3": "node mock/server3.js",
     "server:mock": "npm run discoveryServer & ( sleep 5 && npm run server1 ) & ( sleep 5 && npm run server2 ) & ( sleep 5 && npm run server3 ) "
   },
   "keywords": [],
